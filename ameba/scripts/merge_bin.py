@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import struct
 import sys
 import shutil
 import argparse
@@ -21,8 +22,9 @@ try:
     from image_process.op_prepend_header import PrependHeader as op_prepend_header
     from image_process.op_pad import Pad as op_pad
     from image_process.utility import parse_map_file
-except ImportError:
-    print("Error: Failed to import 'image_process' modules.")
+except ImportError as e:
+    print(f"Error: Failed to import 'image_process' modules: {e}")
+    print(f"Hint: install requirements from {THIS_DIR / 'requirements.txt'}")
     sys.exit(1)
 
 # --- Logging & Constants ---
@@ -81,7 +83,18 @@ class FirmwarePacker:
             sdk_dir = os.environ.get("ZEPHYR_SDK_INSTALL_DIR")
             if not sdk_dir:
                 sys.exit("Error: ZEPHYR_SDK_INSTALL_DIR not set")
-            toolchain_path = Path(sdk_dir) / "arm-zephyr-eabi" / "bin"
+            # zephyr-sdk layouts differ: the tarball installer places the
+            # toolchain at ${SDK}/arm-zephyr-eabi/bin, whereas the Nix
+            # zephyr-nix package places it at ${SDK}/gnu/arm-zephyr-eabi/bin.
+            for candidate in (
+                Path(sdk_dir) / "arm-zephyr-eabi" / "bin",
+                Path(sdk_dir) / "gnu" / "arm-zephyr-eabi" / "bin",
+            ):
+                if (candidate / f"{prefix}-strip").is_file():
+                    toolchain_path = candidate
+                    break
+            else:
+                sys.exit(f"Error: could not locate arm-zephyr-eabi toolchain under {sdk_dir}")
         elif variant == "gnuarmemb":
             prefix = "arm-none-eabi"
             gnu_path = os.environ.get("GNUARMEMB_TOOLCHAIN_PATH")
@@ -272,6 +285,85 @@ def handle_amebadplus(p: FirmwarePacker):
     p.finalize_output(km4_boot, app_bin)
 
 
+def handle_amebasmart(p: FirmwarePacker):
+    """
+    Handle AmebaSmart specific logic.
+
+    AmebaSmart's KM4 image2 layout is xip + sram_2 + psram_2 (no separate
+    entry section like AmebaDPlus). The KM4 bootloader and KM0 image2 come
+    from the nuwa_lib prebuilts. Final flashable output is:
+        km4_boot_all.bin  -> KM4 boot XIP  @ 0x0a000000
+        km0_km4_app.bin   -> KM0 + KM4 image2 @ 0x0c000000 / 0x0d000000
+    """
+    td = p.target_dir
+    axf = td / 'target_pure_img2.axf'
+    map_file = td / 'target_img2.map'
+
+    shutil.copy(p.zephyr_bin.with_suffix('.elf'), axf)
+    shutil.copy(p.zephyr_bin.with_suffix('.raw.map'), map_file)
+    xip_bin = td / 'xip_image2.bin'
+    shutil.copy(p.zephyr_bin, xip_bin)
+
+    p.run_cmd([p.tools.strip, axf])
+    p.run_cmd([p.tools.objcopy, '-j', '.null.empty', '-Obinary', axf, td / 'sram_2.bin'])
+    # The AmebaSmart bootloader hardcodes __image2_entry_func__ = start of
+    # KM4_BD_DRAM (0x60000020) and dereferences it as a RAM_START_FUNCTION
+    # to find our reset vector. Zephyr's boot_section.ld places
+    # `.ram_image2.entry` at the very start of RAMABLE_REGION (== DRAM in
+    # our DT), so we ship that section as the DRAM subimage — its payload
+    # lands at _image_ram_start = 0x60000020 before the bootloader jumps.
+    p.run_cmd([p.tools.objcopy, '-j', '.ram_image2.entry', '-Obinary', axf, td / 'psram_2.bin'])
+
+    p.axf2bin_run('pad', '-i', xip_bin, '-l', 32)
+
+    xip_pre = td / 'xip_image2_prepend.bin'
+    sram_pre = td / 'sram_2_prepend.bin'
+    psram_pre = td / 'psram_2_prepend.bin'
+
+    p.axf2bin_run('prepend_header', '-o', xip_pre, '-i', xip_bin, '-s', '__rom_start_address', '-m', map_file)
+    p.axf2bin_run('prepend_header', '-o', sram_pre, '-i', td / 'sram_2.bin', '-s', '_image_ram_start', '-m', map_file)
+    p.axf2bin_run('prepend_header', '-o', psram_pre, '-i', td / 'psram_2.bin', '-s', '_image_ram_start', '-m', map_file)
+
+    km4_img2 = td / 'km4_image2_all.bin'
+    p.concat_files([xip_pre, sram_pre, psram_pre], km4_img2)
+
+    km4_boot = td / 'km4_boot_all.bin'
+    p.copy_blob('km4_boot_all.bin', km4_boot)
+
+    km0_img2 = td / 'km0_image2_all.bin'
+    p.copy_blob('km0_image2_all.bin', km0_img2)
+
+    boot_cut = td / 'km4_boot.bin'
+    p.axf2bin_run('cut', '-o', boot_cut, '-i', km4_boot, '-l', 4096)
+    # The RTL8730E flash profile expects boot.bin and app.bin.
+    final_boot = td / 'boot.bin'
+    p.axf2bin_run('fw_pack', '-o', final_boot, '--image1', boot_cut)
+
+    app_bin = td / 'app.bin'
+    p.axf2bin_run('fw_pack', '-o', app_bin, '--image2', km0_img2, km4_img2)
+
+    # The prebuilt km4_boot_all.bin has Boot_AP_Enbale=ENABLE compiled in and
+    # will trap on `Fail to load AP image!` unless it finds a valid chain of
+    # AP subimages after KM4. Since we only target KM4, append four empty AP
+    # subimage headers (XIP / BL1 SRAM / BL1 DRAM / FIP): the bootloader
+    # sees the APP_IMAGE_PATTERN signature, treats each as zero-length, and
+    # returns success without loading anything.
+    #
+    # IMAGE_HEADER layout (32 bytes, ameba.h): u32 signature[2],
+    # u32 image_size, u32 image_addr, u32 sb_header, u32 reserved[3].
+    ap_stub = td / 'ap_stub.bin'
+    hdr = struct.pack('<IIIIIIII',
+                      0x35393138, 0x31313738,  # APP_IMAGE_PATTERN_1/_2
+                      0x00000000, 0x00000000,  # image_size, image_addr
+                      0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF)
+    with open(ap_stub, 'wb') as f:
+        f.write(hdr * 4)
+    with open(app_bin, 'ab') as f_out, open(ap_stub, 'rb') as f_in:
+        shutil.copyfileobj(f_in, f_out)
+
+    p.finalize_output(final_boot, app_bin)
+
+
 def handle_amebad(p: FirmwarePacker):
     # 1. Standard Image2 Processing
     km4_img2 = p.standard_process_img2(entry_symbol='__KM4_IMG2_ENTRY_start')
@@ -398,6 +490,8 @@ def main():
                 handle_amebad(packer)
             elif args.soc == "amebag2":
                 handle_amebaG2(packer)
+            elif args.soc == "amebasmart":
+                handle_amebasmart(packer)
             else:
                 logger.error(f"Unsupported SoC: {args.soc}")
                 sys.exit(1)

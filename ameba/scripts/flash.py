@@ -41,6 +41,10 @@ DEVICE_MAP = {
     "amebadplus": {
         "profile": "RTL8721Dx.rdev",
         "floader": "amebadplus/bin/floader_amebadplus.bin"
+    },
+    "amebasmart": {
+        "profile": "RTL8730E_NOR.rdev",
+        "floader": "amebasmart/bin/floader_amebasmart.bin"
     }
 }
 

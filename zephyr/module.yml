@@ -277,6 +277,190 @@ blobs:
     description: "Binary libraries supporting the Ameba series Wi-Fi subsystems"
     doc-url: https://github.com/Ameba-AIoT/nuwa_lib
 
+  # ===== amebasmart bins =====
+
+  - path: ameba/amebasmart/bin/floader_amebasmart.bin
+    sha256: 68460bef86714abdc758fcb708bcd645631352f6951d779f4d0302eb98e33154
+    type: img
+    version: '1.0'
+    license-path: LICENSE
+    url: https://github.com/Ameba-AIoT/nuwa_lib/raw/924d7ae2d185eead702a726abe42d1bed1bbf308/amebasmart/bin/floader_amebasmart.bin
+    description: "Binary images for the Ameba series bootloader"
+    doc-url: https://github.com/Ameba-AIoT/nuwa_lib
+
+  - path: ameba/amebasmart/bin/km0_image2_all.bin
+    sha256: 327939d3c75852dc31160c41a56f1a7958fd134daafa15bde3cc0d68ad449073
+    type: img
+    version: '1.0'
+    license-path: LICENSE
+    url: https://github.com/Ameba-AIoT/nuwa_lib/raw/924d7ae2d185eead702a726abe42d1bed1bbf308/amebasmart/bin/km0_image2_all.bin
+    description: "Binary libraries supporting the Ameba series subsystems"
+    doc-url: https://github.com/Ameba-AIoT/nuwa_lib
+
+  - path: ameba/amebasmart/bin/km4_boot_all.bin
+    sha256: 191e5620cd4bdf33cf84ef4c725e66a1ca0ea4d091f8ba1a737267e76f4f855d
+    type: img
+    version: '1.0'
+    license-path: LICENSE
+    url: https://github.com/Ameba-AIoT/nuwa_lib/raw/924d7ae2d185eead702a726abe42d1bed1bbf308/amebasmart/bin/km4_boot_all.bin
+    description: "Binary images for the Ameba series bootloader"
+    doc-url: https://github.com/Ameba-AIoT/nuwa_lib
+
+  - path: ameba/amebasmart/bin/km4_image2_all.bin
+    sha256: 2fb6752b3208b4208b2522c7028560a09498d58c4b2f533c8525882991de59d5
+    type: img
+    version: '1.0'
+    license-path: LICENSE
+    url: https://github.com/Ameba-AIoT/nuwa_lib/raw/924d7ae2d185eead702a726abe42d1bed1bbf308/amebasmart/bin/km4_image2_all.bin
+    description: "Binary libraries supporting the Ameba series subsystems"
+    doc-url: https://github.com/Ameba-AIoT/nuwa_lib
+
+  - path: ameba/amebasmart/bin/km4_image2_all_coex.bin
+    sha256: 072a71adfc9ea25f994110964e6a544750cd702bd769e8dfb6f5b90a6e720724
+    type: img
+    version: '1.0'
+    license-path: LICENSE
+    url: https://github.com/Ameba-AIoT/nuwa_lib/raw/924d7ae2d185eead702a726abe42d1bed1bbf308/amebasmart/bin/km4_image2_all_coex.bin
+    description: "Binary libraries supporting the Ameba series Wi-Fi subsystems"
+    doc-url: https://github.com/Ameba-AIoT/nuwa_lib
+
+  # ===== amebasmart libs =====
+
+  - path: ameba/amebasmart/lib/km4/lib_chipinfo.a
+    sha256: 76398d8eb0208e46bacc1e9a01d81a55dd44709a1ab3cdc0a49912e34418f223
+    type: lib
+    version: '1.0'
+    license-path: LICENSE
+    url: https://github.com/Ameba-AIoT/nuwa_lib/raw/924d7ae2d185eead702a726abe42d1bed1bbf308/amebasmart/lib/km4/lib_chipinfo.a
+    description: "Binary libraries supporting the Ameba series chip information"
+    doc-url: https://github.com/Ameba-AIoT/nuwa_lib
+
+  - path: ameba/amebasmart/lib/lib_chipinfo.a
+    sha256: 9dadcd132404a88e0ea1d9c47627341d01523d9a0b1634d885c5e32558687762
+    type: lib
+    version: '1.0'
+    license-path: LICENSE
+    url: https://github.com/Ameba-AIoT/nuwa_lib/raw/924d7ae2d185eead702a726abe42d1bed1bbf308/amebasmart/lib/lib_chipinfo.a
+    description: "Binary libraries supporting the Ameba series chip information"
+    doc-url: https://github.com/Ameba-AIoT/nuwa_lib
+
+  - path: ameba/amebasmart/lib/lib_coex_api.a
+    sha256: 7d21c5de38de4671095264be11bc6a485a3d2130aa37a014fc2ff70a2c4b100e
+    type: lib
+    version: '1.0'
+    license-path: LICENSE
+    url: https://github.com/Ameba-AIoT/nuwa_lib/raw/924d7ae2d185eead702a726abe42d1bed1bbf308/amebasmart/lib/lib_coex_api.a
+    description: "Binary libraries supporting the Ameba series Wi-Fi subsystems"
+    doc-url: https://github.com/Ameba-AIoT/nuwa_lib
+
+  - path: ameba/amebasmart/lib/lib_eap.a
+    sha256: c0878d69cb1ea07ac394e2b5cac33d92c9b3bc24e98e145c0a8e6b0277e84c90
+    type: lib
+    version: '1.0'
+    license-path: LICENSE
+    url: https://github.com/Ameba-AIoT/nuwa_lib/raw/924d7ae2d185eead702a726abe42d1bed1bbf308/amebasmart/lib/lib_eap.a
+    description: "Binary libraries supporting the Ameba series Wi-Fi subsystems"
+    doc-url: https://github.com/Ameba-AIoT/nuwa_lib
+
+  - path: ameba/amebasmart/lib/libpm.a
+    sha256: ef6d649f8906b5b1e013cbeaba563b4cea8fc98a15b5958ed7f7e3c05826afc4
+    type: lib
+    version: '1.0'
+    license-path: LICENSE
+    url: https://github.com/Ameba-AIoT/nuwa_lib/raw/924d7ae2d185eead702a726abe42d1bed1bbf308/amebasmart/lib/libpm.a
+    description: "Binary libraries supporting the Ameba series Wi-Fi subsystems"
+    doc-url: https://github.com/Ameba-AIoT/nuwa_lib
+
+  - path: ameba/amebasmart/lib/lib_rom.a
+    sha256: 62351ee29cfc2df137556bcccba9cb6997e49f2b083b9be0cee970aec98e6b64
+    type: lib
+    version: '1.0'
+    license-path: LICENSE
+    url: https://github.com/Ameba-AIoT/nuwa_lib/raw/924d7ae2d185eead702a726abe42d1bed1bbf308/amebasmart/lib/lib_rom.a
+    description: "Binary libraries supporting the Ameba series Wi-Fi subsystems"
+    doc-url: https://github.com/Ameba-AIoT/nuwa_lib
+
+  - path: ameba/amebasmart/lib/lib_rtw_event.a
+    sha256: a611f82c5f236f8bd7744844baa705a9f8b9fc402fb180e480cbacac9e86cc5b
+    type: lib
+    version: '1.0'
+    license-path: LICENSE
+    url: https://github.com/Ameba-AIoT/nuwa_lib/raw/924d7ae2d185eead702a726abe42d1bed1bbf308/amebasmart/lib/lib_rtw_event.a
+    description: "Binary libraries supporting the Ameba series Wi-Fi subsystems"
+    doc-url: https://github.com/Ameba-AIoT/nuwa_lib
+
+  - path: ameba/amebasmart/lib/lib_usbd.a
+    sha256: 779a7849f8670f2bc392ae56e994b042e26b81357f6095587735a86b113663f6
+    type: lib
+    version: '1.0'
+    license-path: LICENSE
+    url: https://github.com/Ameba-AIoT/nuwa_lib/raw/924d7ae2d185eead702a726abe42d1bed1bbf308/amebasmart/lib/lib_usbd.a
+    description: "Binary libraries supporting the Ameba series USB subsystems"
+    doc-url: https://github.com/Ameba-AIoT/nuwa_lib
+
+  - path: ameba/amebasmart/lib/lib_usbh.a
+    sha256: 7d6beb283608e90251213fb3b4d24b8a62794016144940bb689863153d7977f7
+    type: lib
+    version: '1.0'
+    license-path: LICENSE
+    url: https://github.com/Ameba-AIoT/nuwa_lib/raw/924d7ae2d185eead702a726abe42d1bed1bbf308/amebasmart/lib/lib_usbh.a
+    description: "Binary libraries supporting the Ameba series USB subsystems"
+    doc-url: https://github.com/Ameba-AIoT/nuwa_lib
+
+  - path: ameba/amebasmart/lib/lib_wifi_api.a
+    sha256: 01f135c5a16e65af3447b1d34b2394901ccd86aa46ffa2fffe5137d318fde22e
+    type: lib
+    version: '1.0'
+    license-path: LICENSE
+    url: https://github.com/Ameba-AIoT/nuwa_lib/raw/924d7ae2d185eead702a726abe42d1bed1bbf308/amebasmart/lib/lib_wifi_api.a
+    description: "Binary libraries supporting the Ameba series Wi-Fi subsystems"
+    doc-url: https://github.com/Ameba-AIoT/nuwa_lib
+
+  - path: ameba/amebasmart/lib/lib_wifi_com_sec.a
+    sha256: a838280450bdd150a82fd1c0a18241f303947b6e581c110a2905bebf3aed8917
+    type: lib
+    version: '1.0'
+    license-path: LICENSE
+    url: https://github.com/Ameba-AIoT/nuwa_lib/raw/924d7ae2d185eead702a726abe42d1bed1bbf308/amebasmart/lib/lib_wifi_com_sec.a
+    description: "Binary libraries supporting the Ameba series Wi-Fi subsystems"
+    doc-url: https://github.com/Ameba-AIoT/nuwa_lib
+
+  - path: ameba/amebasmart/lib/lib_wifi_rtk_app.a
+    sha256: 5de99baa31fce8058c1abd2c902fd1c78ccae6ed79021a80e604f563f97c192c
+    type: lib
+    version: '1.0'
+    license-path: LICENSE
+    url: https://github.com/Ameba-AIoT/nuwa_lib/raw/924d7ae2d185eead702a726abe42d1bed1bbf308/amebasmart/lib/lib_wifi_rtk_app.a
+    description: "Binary libraries supporting the Ameba series Wi-Fi subsystems"
+    doc-url: https://github.com/Ameba-AIoT/nuwa_lib
+
+  - path: ameba/amebasmart/lib/lib_wifi_whc_ap.a
+    sha256: 7a01c36539d4f9fef9e40fc60e00c5ddecb09d1338231d4579a2b4a3003f7d13
+    type: lib
+    version: '1.0'
+    license-path: LICENSE
+    url: https://github.com/Ameba-AIoT/nuwa_lib/raw/924d7ae2d185eead702a726abe42d1bed1bbf308/amebasmart/lib/lib_wifi_whc_ap.a
+    description: "Binary libraries supporting the Ameba series Wi-Fi subsystems"
+    doc-url: https://github.com/Ameba-AIoT/nuwa_lib
+
+  - path: ameba/amebasmart/lib/lib_wpa_lite.a
+    sha256: 9e0315fd10c2c831f360e2a1445573442c0656873b49ba4b94c33dbb03d74d18
+    type: lib
+    version: '1.0'
+    license-path: LICENSE
+    url: https://github.com/Ameba-AIoT/nuwa_lib/raw/924d7ae2d185eead702a726abe42d1bed1bbf308/amebasmart/lib/lib_wpa_lite.a
+    description: "Binary libraries supporting the Ameba series Wi-Fi subsystems"
+    doc-url: https://github.com/Ameba-AIoT/nuwa_lib
+
+  - path: ameba/amebasmart/lib/lib_wps.a
+    sha256: 2ee2d9f1752c42001ed2a570b01bcb8c0bec8cb7049c163892d9bc089cf7d2bc
+    type: lib
+    version: '1.0'
+    license-path: LICENSE
+    url: https://github.com/Ameba-AIoT/nuwa_lib/raw/924d7ae2d185eead702a726abe42d1bed1bbf308/amebasmart/lib/lib_wps.a
+    description: "Binary libraries supporting the Ameba series Wi-Fi subsystems"
+    doc-url: https://github.com/Ameba-AIoT/nuwa_lib
+
   # ===== amebag2 bins =====
 
   - path: ameba/amebag2/bin/amebagreen2_boot.bin
@@ -522,14 +706,14 @@ blobs:
     url: https://github.com/rtkconnectivity/rtl8752h_sdk/raw/refs/heads/v1.3.0/bin/gcc/adc.a
     description: "Precompiled ADC library for RTL8752H."
   - path: bee/drivers/rtl87x2g/adc/librtl87x2g_adc.a
-    sha256: cd056d020b5b1d9dd1a4417c2afad6ea65e19241e4ebee780616b08872c10355
+    sha256: 20e7195215ea2dde4d9c9afcd04b91c460ed5c481630f03e0dff67df12c26106
     type: lib
     version: '0.0'
     license-path: LICENSE
     url: https://github.com/rtkconnectivity/rtl87x2g_sdk/raw/refs/heads/main/bsp/driver/driver_lib/lib/rtl87x2g/gcc/librtl87x2g_adc.a
     description: "Precompiled ADC library for RTL87X2G."
   - path: bee/drivers/rtl87x2g/can/librtl87x2g_can.a
-    sha256: a490bbd7a99f8c5d4cb9a81a6208ba274bb58e090c0aee985bc2a6f85512e810
+    sha256: 000e3406c1fcbd5f7fe742f96252867978617a5367251ab3dbcf0bd736f93633
     type: lib
     version: '0.0'
     license-path: LICENSE

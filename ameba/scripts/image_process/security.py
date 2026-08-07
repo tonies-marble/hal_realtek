@@ -15,10 +15,26 @@ def check_python_lib(lib):
     print('%s Python library is not installed.Please install by command: pip install -r {sdk}/tools/image_scripts/requirements.txt'%(lib))
     sys.exit(-1)
 
-try:
-    import mbedtls
-except:
-    check_python_lib('mbedtls')
+# mbedtls and sslcrypto are only touched on secure-boot / RSIP paths.
+# Import them lazily so basic packing (sboot_enable=false, rsip_enable=false)
+# does not require these packages to be installed. `Curve` is referenced in a
+# handful of enum lookups; we defer resolution until first use.
+class _LazyModule:
+    def __init__(self, name):
+        self._name = name
+        self._mod = None
+    def _load(self):
+        if self._mod is None:
+            try:
+                self._mod = __import__(self._name)
+            except ImportError:
+                check_python_lib(self._name)
+        return self._mod
+    def __getattr__(self, attr):
+        return getattr(self._load(), attr)
+
+mbedtls = _LazyModule('mbedtls')
+sslcrypto = _LazyModule('sslcrypto')
 
 try:
     import cryptography
@@ -31,19 +47,29 @@ except:
     check_python_lib('Crypto')
 
 try:
-    import sslcrypto
-except:
-    check_python_lib('sslcrypto')
-
-try:
     import ecdsa
 except:
     check_python_lib('ecdsa')
 
-from mbedtls.pk import Curve
 from cryptography.hazmat.primitives.asymmetric import ed25519, ec
 from cryptography.hazmat.primitives import serialization
 from Crypto.Cipher import AES
+
+class _LazyCurve:
+    _resolved = None
+    def _get(self):
+        if _LazyCurve._resolved is None:
+            from mbedtls.pk import Curve as _C
+            _LazyCurve._resolved = _C
+        return _LazyCurve._resolved
+    def __getattr__(self, name):
+        return getattr(self._get(), name)
+    def __call__(self, *args, **kwargs):
+        return self._get()(*args, **kwargs)
+    def __eq__(self, other):
+        return self._get() == other
+
+Curve = _LazyCurve()
 
 ciL = 8
 biL = ciL << 3
