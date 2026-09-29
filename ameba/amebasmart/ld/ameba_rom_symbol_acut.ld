@@ -530,7 +530,7 @@ SECTIONS
     PROVIDE(__rom_stdlib_bss_end__ = 0x2001ea0c);
     PROVIDE(__rom_stdlib_heap_start__ = 0x2001ea20);
     PROVIDE(__km0_image2_entry_func__ = 0x23002020);
-    PROVIDE(__km0_ipc_memory_start__ = 0x2301ed00);
+    PROVIDE(__km0_ipc_memory_start__ = 0x2301fd00); /* IPC msg array; 0x2301ed00 in older layouts */
     PROVIDE(__retention_entry_func__ = 0x23020000);
     PROVIDE(__rom_bss_start_s__ = 0x30000000);
     PROVIDE(__ram_start_table_start__ = 0x30003020);

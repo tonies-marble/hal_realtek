@@ -38,9 +38,9 @@
 
 #elif defined (CONFIG_ARM_CORE_CM0)
 
-/* --------  Configuration of the Cortex-M23 Processor and Core Peripherals  ------ */
-#define __CM23_REV                0x0000U   /* Core revision r0p1 */
-// #define __ARMv8MBL_REV            0x0000U   /* Core revision r0p0 */
+/* --------  Configuration of the Ameba KM0 (Armv8-M Baseline) core  -------------- */
+// #define __CM23_REV                0x0000U   /* Core revision r0p1 */
+#define __ARMv8MBL_REV            0x0000U   /* Core revision r0p0 */
 #define __MPU_PRESENT             1U        /* MPU present */
 #define __SAUREGION_PRESENT       0U        /* SAU regions present */
 #define __VTOR_PRESENT            1U        /* VTOR present */
@@ -50,16 +50,55 @@
 #define __DSP_PRESENT             0U        /* no DSP extension present */
 
 #define RTK_DCACHE_2WAY           1U        /* 2-way Cache */
-#include "core_cm23_km0.h"
-// #include "core_armv8mbl.h"
 
-/* CM23 Does not support Cache, But Ameba Has it */
+/*
+ * The RTK __NVIC_SetPriority() in core_armv8mbl.h clamps to MAX_IRQ_PRIORITY_VALUE.
+ * That macro is normally provided by ameba_vector.h (3 for KM0, since
+ * __NVIC_PRIO_BITS == 2), but ameba_vector.h is included after this core header,
+ * so define it here first.  Guarded and kept identical to ameba_vector.h's value
+ * so the later (unguarded) definition there is a harmless identical redefinition.
+ */
+#ifndef MAX_IRQ_PRIORITY_VALUE
+#define MAX_IRQ_PRIORITY_VALUE    3
+#endif
+
+/*
+ * The Ameba KM0 core is Armv8-M baseline (Cortex-M23 compatible) but, unlike a
+ * stock Cortex-M23, implements an RTK 2-way cache that exposes ARMv7-M-style SCB
+ * cache-maintenance registers.  The vendored core_armv8mbl.h is the ARM CMSIS
+ * Armv8-M Baseline core header extended with those SCB cache registers (the
+ * upstream vendor's "core_cm23_km0.h" is not shipped in this tree).  It provides
+ * the SCB cache registers that armv7m_cachel1.h relies on, so the stock CMSIS
+ * cache helper compiles and ameba_cache.h / ameba_ipc_api.c resolve.
+ */
+#include "core_armv8mbl.h"
+
+/*
+ * Cache present at the core level (matches CPU_HAS_I/DCACHE forced by the SoC
+ * series), so keep __I/DCACHE_PRESENT=1 to satisfy Zephyr's cmsis_core_m.h
+ * consistency check.
+ */
 #define __ICACHE_PRESENT          1U        /* Instruction Cache present */
 #define __DCACHE_PRESENT          1U        /* Data Cache present */
-/* ##########################  Cache functions  #################################### */
+
+/*
+ * ##########################  Cache functions  ####################################
+ * core_armv8mbl.h (Armv8-M baseline) does not pull in the ARMv7-M cache helper
+ * the way core_cm55.h does, so include it explicitly (CMSIS-6 layout).
+ */
 #if ((defined (__ICACHE_PRESENT) && (__ICACHE_PRESENT == 1U)) || \
      (defined (__DCACHE_PRESENT) && (__DCACHE_PRESENT == 1U)))
 #include "m-profile/armv7m_cachel1.h"
+#endif
+
+/*
+ * ##########################   MPU functions  #####################################
+ * Likewise, core_armv8mbl.h defines the MPU_Type registers but not the ARM_MPU_*
+ * helper functions.  core_cm55.h pulls in m-profile/armv8m_mpu.h for those; do
+ * the same here so Zephyr's Armv8-M MPU driver (arm_mpu.c) links.
+ */
+#if defined (__MPU_PRESENT) && (__MPU_PRESENT == 1U)
+#include "m-profile/armv8m_mpu.h"
 #endif
 
 #elif defined (CONFIG_ARM_CORE_CA32)

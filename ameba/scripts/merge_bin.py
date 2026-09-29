@@ -473,6 +473,147 @@ def handle_amebag2_mcuboot(p: FirmwarePacker):
         sys.exit(1)
 
 
+def _amebasmart_positional_image2(p: FirmwarePacker, slots: list, out_name: str):
+    """Build a vendor-format per-core image2 with the FULL positional slot set
+    and emit it as <out_name> into both the gcc_project/ dir and images/.
+
+    IMG1 walks the concatenated km0+km4+ap image2 sub-images *sequentially by
+    position* -- each per-core blob must therefore be self-contained and carry
+    every positional slot (XIP / SRAM / DRAM) that the vendor blob has, with the
+    real payload in the correct slot and empty 32-byte-header stubs (len=0) in
+    the others.  A short blob would shift every following sub-image and cascade
+    into "AP XIP IMG Invalid".
+
+    `slots` is an ordered list of dicts:
+        {'load': <addr>, 'payload': <Path or None>, 'label': <str>}
+    A payload of None emits an empty stub (32-byte header, len=0) at that load
+    address; a real payload is padded to 32B and carried after its header.
+
+    Each 32-byte header is byte-for-byte the vendor image2 header format
+    (op_prepend_header: 0x3831393538373131 "81958711" sig + LE length +
+    LE load-addr + 16x 0xFF).
+    """
+    td = p.target_dir
+    empty = td / '_img2_empty.bin'
+    empty.write_bytes(b'')  # zero-length payload for stub slots
+
+    parts = []
+    for i, s in enumerate(slots):
+        label = s.get('label', f'slot{i}')
+        if s['payload'] is None:
+            # Empty stub: 32-byte header only (len=0) at this load address.
+            src = empty
+        else:
+            # Real payload: copy + pad to 32B (matches vendor / standard_process_img2).
+            src = td / f'{label}_payload.bin'
+            shutil.copy(s['payload'], src)
+            p.axf2bin_run('pad', '-i', src, '-l', 32)
+        pre = td / f'{label}_prepend.bin'
+        p.axf2bin_run('prepend_header', '-o', pre, '-i', src,
+                      '--address', hex(s['load']))
+        parts.append(pre)
+
+    # Concatenate the positional sub-images into the final per-core image2.
+    out_img2 = td / out_name
+    p.concat_files(parts, out_img2)
+    shutil.copy(out_img2, p.image_dir / out_name)
+    return out_img2
+
+
+def handle_amebasmart_km4_app(p: FirmwarePacker):
+    """
+    AmebaSmart (RTL8730E) KM4 (Cortex-M55) Zephyr *application* image2.
+
+    Mirrors the vendor km4_image2_all.bin 3-slot positional layout exactly:
+
+        #1 XIP  stub  (len=0) @ KM4_IMG2_XIP  (0x0D000020)
+        #2 SRAM stub  (len=0) @ KM4_BD_RAM    (0x20014020)
+        #3 DRAM REAL          @ KM4_BD_DRAM   (0x60000020)  <- our zephyr.bin
+
+    The KM4 rpmsg-remote app is therefore built NON-XIP (CONFIG_XIP=n): the whole
+    zephyr.bin links/runs from PSRAM at KM4_BD_DRAM (0x60000020, == the km4 dts
+    sram0 PSRAM window) and is carried verbatim in the DRAM slot -- matching how
+    the vendor KM4 firmware is a single DRAM sub-image at 0x60000020.  IMG1 loads
+    the DRAM sub-image to PSRAM and enters it there.
+    """
+    # Resolve all slot addresses from ameba_layout.ld (single source of truth).
+    layout_addr = parse_amebasmart_layout_addrs(
+        Path(__file__).resolve().parents[1] / 'amebasmart' / 'ameba_layout.ld')
+
+    km4_img2_name = 'km4_image2_all_coex.bin' if p.args.bt_coexist else 'km4_image2_all.bin'
+    slots = [
+        {'load': layout_addr['km4_xip'],     'payload': None,         'label': 'km4_xip'},
+        {'load': layout_addr['km4_bd_ram'],  'payload': None,         'label': 'km4_sram'},
+        {'load': layout_addr['km4_bd_dram'], 'payload': p.zephyr_bin, 'label': 'km4_dram'},
+    ]
+    _amebasmart_positional_image2(p, slots, km4_img2_name)
+    logger.info(f"========== AmebaSmart KM4 app image2 Done ({km4_img2_name}) ==========")
+
+
+def handle_amebasmart_km0_app(p: FirmwarePacker):
+    """
+    AmebaSmart (RTL8730E) KM0 (Cortex-M23, low-power) Zephyr *application*
+    image2.
+
+    Mirrors the vendor km0_image2_all.bin 3-slot positional layout exactly:
+
+        #1 XIP  stub  (len=0) @ KM0_IMG2_XIP  (0x0C000020)
+        #2 SRAM REAL          @ KM0_BD_RAM    (0x23002020)  <- our zephyr.bin
+        #3 DRAM stub  (len=0) @ KM0_BD_DRAM   (0x6FFFFFFF sentinel)
+
+    KM0 is built CONFIG_XIP=n: the whole zephyr.bin is SRAM-resident and is
+    loaded verbatim to the KM0 SRAM entry (KM0_BD_RAM 0x23002020, ==
+    CONFIG_SRAM_BASE_ADDRESS, verified in the KM0 build map) -- the real payload
+    goes in the SRAM slot, the XIP and DRAM slots are empty stubs.  The full
+    3-slot layout keeps IMG1's sequential sub-image walk aligned.
+    """
+    # Resolve all slot addresses from ameba_layout.ld (single source of truth).
+    layout_addr = parse_amebasmart_layout_addrs(
+        Path(__file__).resolve().parents[1] / 'amebasmart' / 'ameba_layout.ld')
+
+    km0_img2_name = 'km0_image2_all_coex.bin' if p.args.bt_coexist else 'km0_image2_all.bin'
+    slots = [
+        {'load': layout_addr['km0_xip'],     'payload': None,         'label': 'km0_xip'},
+        {'load': layout_addr['km0_bd_ram'],  'payload': p.zephyr_bin, 'label': 'km0_sram'},
+        {'load': layout_addr['km0_bd_dram'], 'payload': None,         'label': 'km0_dram'},
+    ]
+    _amebasmart_positional_image2(p, slots, km0_img2_name)
+    logger.info(f"========== AmebaSmart KM0 app image2 Done ({km0_img2_name}) ==========")
+
+
+def _find_amebasmart_sibling_image2(p: FirmwarePacker, *names: str):
+    """Locate OUR per-core image2 produced by a sibling sysbuild domain (the
+    km0/km4 Zephyr apps added via ExternalZephyrProject_Add).
+
+    Each core-app domain emits its packaged image2 into <domain-build>/images/
+    (see handle_amebasmart_km{0,4}_app -> p.image_dir).  In a sysbuild build the
+    CA32 (default) domain's build dir (p.out_dir) is a sibling of the km0/km4
+    domain build dirs under the sysbuild top build tree (p.out_dir.parent), so
+    we scan <top>/ * /images/<name>, excluding the CA32 domain's own images/.
+
+    <names> is tried in order; the first present wins.  This lets the caller pass
+    both the coex and non-coex variant names so a BT_COEXIST mismatch between the
+    CA32 and core-app builds still resolves.
+
+    Returns the Path of the first match, or None (caller falls back to the
+    vendor blob).
+    """
+    top = p.out_dir.parent  # sysbuild top-level build dir
+    # Only a real sysbuild top (marked by domains.yaml) may donate sibling
+    # images; a standalone build in a shared directory must not absorb images
+    # from unrelated neighbouring build trees.
+    if not (top / 'domains.yaml').is_file():
+        return None
+    self_images = p.image_dir.resolve()
+    for name in names:
+        for cand in sorted(top.glob(f'*/images/{name}')):
+            if cand.parent.resolve() == self_images:
+                continue
+            if cand.is_file():
+                return cand
+    return None
+
+
 def handle_amebasmart(p: FirmwarePacker):
     """
     AmebaSmart (RTL8730E) Cortex-A32 image generation.
@@ -547,13 +688,33 @@ def handle_amebasmart(p: FirmwarePacker):
     ap_image = td / 'ap_image_all.bin'
     p.concat_files([xip_pre, bl1_sram_pre, bl1_pre, fip_pre], ap_image)
 
-    # 8. Copy blobs
+    # 8. Gather the KM0 + KM4 image2 sub-images.
+    #
+    # Prefer OUR sibling-domain outputs (the km0/km4 Zephyr apps packaged by
+    # handle_amebasmart_km0_app / handle_amebasmart_km4_app, emitted into each
+    # domain's images/ dir under the sysbuild top build tree).  This mirrors the
+    # amebadplus tfm_ns sibling-domain pattern.  Fall back to the vendor blob
+    # only when no sibling output is present (e.g. CA32-only build).
     km0_img2 = td / 'km0_image2_all.bin'
-    p.copy_blob('km0_image2_all.bin', km0_img2)
+    km0_sibling = _find_amebasmart_sibling_image2(
+        p, 'km0_image2_all.bin', 'km0_image2_all_coex.bin')
+    if km0_sibling is not None:
+        logger.info(f"Using OUR KM0 image2 from sibling domain: {km0_sibling}")
+        shutil.copy(km0_sibling, km0_img2)
+    else:
+        logger.info("No sibling KM0 image2 found; falling back to vendor blob")
+        p.copy_blob('km0_image2_all.bin', km0_img2)
 
     km4_img2_name = 'km4_image2_all_coex.bin' if p.args.bt_coexist else 'km4_image2_all.bin'
     km4_img2 = td / km4_img2_name
-    p.copy_blob(km4_img2_name, km4_img2)
+    km4_alt_name = 'km4_image2_all.bin' if p.args.bt_coexist else 'km4_image2_all_coex.bin'
+    km4_sibling = _find_amebasmart_sibling_image2(p, km4_img2_name, km4_alt_name)
+    if km4_sibling is not None:
+        logger.info(f"Using OUR KM4 image2 from sibling domain: {km4_sibling}")
+        shutil.copy(km4_sibling, km4_img2)
+    else:
+        logger.info("No sibling KM4 image2 found; falling back to vendor blob")
+        p.copy_blob(km4_img2_name, km4_img2)
 
     # 9. fw_pack --image2: generates cert.bin + manifest.bin, handles RSIP, and assembles final app
     km0_km4_ca32_app = td / 'km0_km4_ca32_app.bin'
@@ -579,6 +740,10 @@ def main():
     parser.add_argument("--module-dir", required=True)
     parser.add_argument("--bt-coexist", action="store_true")
     parser.add_argument("--mcuboot", action="store_true")
+    parser.add_argument("--core", choices=['km4', 'km0', 'ca32'], default=None,
+                        help="For multi-core SoCs (amebasmart): which core's image2 to "
+                             "package. 'km4'/'km0' emit the per-core image2 (XIP) blob; "
+                             "default (None) keeps the legacy CA32/ATF combined-app flow.")
     args = parser.parse_args()
 
     try:
@@ -608,7 +773,12 @@ def main():
             elif args.soc == "amebag2":
                 handle_amebag2(packer)
             elif args.soc == "amebasmart":
-                handle_amebasmart(packer)
+                if args.core == "km4":
+                    handle_amebasmart_km4_app(packer)
+                elif args.core == "km0":
+                    handle_amebasmart_km0_app(packer)
+                else:
+                    handle_amebasmart(packer)
             else:
                 logger.error(f"Unsupported SoC: {args.soc}")
                 sys.exit(1)

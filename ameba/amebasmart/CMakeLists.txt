@@ -7,6 +7,19 @@ zephyr_compile_options_ifdef(CONFIG_MCUBOOT -mcmse)
 # Pre-compiled libraries
 set(LIB_PATH ${ZEPHYR_CURRENT_MODULE_DIR}/zephyr/blobs/ameba/${CONFIG_SOC_SERIES}/lib)
 
+# Per-core WiFi libraries: the blob checkout does not ship them; take them from
+# the ameba-rtos SDK west project (same v1.3.0 generation as the CA32 host
+# blobs).  A copy under the blob checkout, if present, wins.
+set(AMEBA_RTOS_PROJ ${WEST_TOPDIR}/modules/hal/ameba-rtos/component/soc/amebasmart/project)
+set(NP_WIFI_LIB_DIR ${LIB_PATH}/km4)
+if(NOT EXISTS ${NP_WIFI_LIB_DIR}/lib_wifi_whc_np.a AND EXISTS ${AMEBA_RTOS_PROJ}/project_hp/lib/application/lib_wifi_whc_np.a)
+  set(NP_WIFI_LIB_DIR ${AMEBA_RTOS_PROJ}/project_hp/lib/application)
+endif()
+set(LP_WIFI_LIB_DIR ${LIB_PATH}/km0)
+if(NOT EXISTS ${LP_WIFI_LIB_DIR}/lib_wifi_fw.a AND EXISTS ${AMEBA_RTOS_PROJ}/project_lp/lib/application/lib_wifi_fw.a)
+  set(LP_WIFI_LIB_DIR ${AMEBA_RTOS_PROJ}/project_lp/lib/application)
+endif()
+
 if(EXISTS ${LIB_PATH})
   zephyr_link_libraries_ifdef(CONFIG_WIFI_AMEBA ${LIB_PATH}/lib_wifi_whc_ipc_host.a)
   zephyr_link_libraries_ifdef(CONFIG_WIFI_AMEBA ${LIB_PATH}/lib_rtw_event.a)
@@ -34,8 +47,39 @@ if(EXISTS ${LIB_PATH})
     # SOCPS_PG_Enter, SOCPS_SleepPG_LIB/SOCPS_SleepCG_LIB,
     # SOCPS_Backup_CPU1/SOCPS_Restore_CPU1.
     zephyr_link_libraries_ifdef(CONFIG_PM ${LIB_PATH}/lib_pmc.a)
+  elseif(CONFIG_SOC_RTL8730E_KM0)
+    # KM0 (Cortex-M23, soft-float LP core): the km4/lib_chipinfo.a archive is
+    # built for the KM4 (Cortex-M55) hard-float ABI and cannot be linked into
+    # the soft-float KM0 image.  KM0's ROM-resident symbols are resolved through
+    # the KM0 ROM symbol linker script instead (see km0/CMakeLists.txt), so no
+    # chipinfo archive is linked here.
+    #
+    # WiFi MAC firmware; must match the SDK generation of the KM4/CA32 WHC
+    # libraries (the WHC IPC shared structs are not ABI-stable across releases).
+    # Group: the firmware entry (wififw_task_create) pulls the member whose
+    # .ipc.table.data entries register the RX handlers; the group resolves the
+    # archive's internal circular references.
+    zephyr_link_libraries_ifdef(CONFIG_WIFI_FW_EN
+      -Wl,--start-group ${LP_WIFI_LIB_DIR}/lib_wifi_fw.a -Wl,--end-group)
   else()
     zephyr_link_libraries(${LIB_PATH}/km4/lib_chipinfo.a)
+    # WHC NP role: 802.11 driver + WHC IPC device (same SDK-generation caveat).
+    # One --start-group: the archives have circular internal and mutual
+    # references; whc_ipc_dev_init pulls the member whose .ipc.table.data
+    # entries register the RX handlers.
+    zephyr_link_libraries_ifdef(CONFIG_AS_INIC_NP
+      -Wl,--start-group
+      ${NP_WIFI_LIB_DIR}/lib_wifi_whc_np.a
+      ${NP_WIFI_LIB_DIR}/lib_wifi_com_sec.a
+      ${LIB_PATH}/km4/lib_chipinfo.a
+      -Wl,--end-group)
+    # The driver library drives the codec mic-bias/HPO power modes.
+    zephyr_library_sources_ifdef(CONFIG_AS_INIC_NP
+      ${AMEBA_RTOS_PROJ}/../fwlib/ram_hp/ameba_codec.c)
+    if(CONFIG_AS_INIC_NP AND CONFIG_BT_COEXIST)
+      zephyr_link_libraries(
+        -Wl,--start-group ${NP_WIFI_LIB_DIR}/lib_coex.a -Wl,--end-group)
+    endif()
   endif()
 
 endif()
@@ -71,9 +115,22 @@ if(CONFIG_SOC_RTL8730E_CA32)
   )
 endif()
 
+# The vendor IPC dispatcher is needed wherever .ipc.table.data consumers run:
+# CA32 always (above), KM4/KM0 for their WiFi roles.
+if(CONFIG_AS_INIC_NP OR CONFIG_WIFI_FW_EN)
+  zephyr_library_sources(source/fwlib/ram_common/ameba_ipc_ram.c)
+endif()
+
 # Peripheral drivers
 zephyr_library_sources_ifdef(CONFIG_PINCTRL source/fwlib/ram_common/ameba_pinmux.c)
 zephyr_library_sources_ifdef(CONFIG_WIFI_AMEBA source/misc/ameba_pmu.c)
+# The KM4/KM0 WiFi libraries import the pmu_* wakelock API as well.
+if(CONFIG_AS_INIC_NP OR CONFIG_WIFI_FW_EN)
+  zephyr_library_sources(source/misc/ameba_pmu.c)
+endif()
+# _sscanf_ss for the NP driver library, from the SDK west project.
+zephyr_library_sources_ifdef(CONFIG_AS_INIC_NP
+  ${AMEBA_RTOS_PROJ}/../swlib/sscanf_minimal.c)
 zephyr_library_sources_ifdef(CONFIG_RTC_AMEBA source/fwlib/ram_common/ameba_rtc.c)
 zephyr_library_sources_ifdef(CONFIG_GPIO_AMEBA source/fwlib/ram_common/ameba_gpio.c)
 zephyr_library_sources_ifdef(CONFIG_SOC_FLASH_AMEBA source/fwlib/ram_common/ameba_flash_ram.c)

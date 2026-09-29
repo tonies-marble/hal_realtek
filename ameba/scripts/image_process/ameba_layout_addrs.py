@@ -61,6 +61,15 @@ def parse_amebasmart_layout_addrs(layout_ld):
         'bl1_dram':     resolve_symbol('__ca32_bl1_dram_start__'),
         'fip':          resolve_symbol('__ca32_fip_dram_start__'),
         'km4_bd_dram':  origin('KM4_BD_DRAM'),
+        # KM0 runs from SRAM (XIP=n): its image2 loads to KM0_BD_RAM ORIGIN
+        # (0x23002020), NOT the KM0 XIP flash window.
+        'km0_bd_ram':   origin('KM0_BD_RAM'),
+        # KM4 SRAM-TCM ORIGIN (0x20014020) and KM0 DRAM ORIGIN (0x6fffffff
+        # sentinel). Both are used as *empty stub* sub-image load addresses so
+        # each per-core image2 mirrors the vendor 3-slot positional layout
+        # (XIP / SRAM / DRAM) that IMG1 walks by position.
+        'km4_bd_ram':   origin('KM4_BD_RAM'),
+        'km0_bd_dram':  origin('KM0_BD_DRAM'),
         # Per-core flash-XIP window ORIGINs; each RSIP'd at its own address.
         'km0_xip':      origin('KM0_IMG2_XIP'),
         'km4_xip':      origin('KM4_IMG2_XIP'),

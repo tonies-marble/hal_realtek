@@ -46,12 +46,20 @@
 #define CONFIG_FLASH_OTA2_SIZE 0x2C0000
 #define CONFIG_FLASH_USER_OFFSET 0x0
 #define CONFIG_FLASH_USER_SIZE 0x0
+/* WHC role: the CA32 runs the host side; the KM4 NP build (CONFIG_AS_INIC_NP,
+ * from Kconfig autoconf) runs the device side and has no TCP/IP stack.
+ */
+#ifdef CONFIG_AS_INIC_NP
+#define CONFIG_WHC_DEV 1
+#define CONFIG_WIFI_AP_STA_NUM 12
+#else
 #define CONFIG_WHC_HOST 1
 #define CONFIG_WHC_WIFI_API_PATH 1
+#define CONFIG_LWIP_LAYER 1
+#endif
 #define CONFIG_WLAN_CRITICAL_CODE_IN_RAM 1
 #define CONFIG_WLAN 1
 #define CONFIG_WHC_INTF_IPC 1
-#define CONFIG_LWIP_LAYER 1
 #define CONFIG_SHELL_TASK_STACK_BASIC_SIZE 1376
 #define CONFIG_PBUF_POOL_BUFSIZE 508
 //#define CONFIG_BT_COEXIST 1
