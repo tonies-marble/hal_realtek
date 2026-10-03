@@ -10,12 +10,16 @@ config BT_COEXIST
 	select COEXIST_HOST if !SINGLE_CORE_WIFI
 
 	select ZEPHYR_SDK
+	select PLATFORM_ZEPHYR
 
 config COEXIST_HOST
 	bool
 config COEXIST_DEV
 	bool
 config ZEPHYR_SDK
+	bool
+# Newer SDK sources (amebasmart, ameba-rtos) test this name.
+config PLATFORM_ZEPHYR
 	bool
 
 if BT_COEXIST && !SOC_SERIES_AMEBAD
